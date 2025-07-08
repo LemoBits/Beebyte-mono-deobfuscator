@@ -28,9 +28,8 @@ public class StaticCleanerLogic
             {
                 if (!method.HasBody) continue;
 
-                for (int i = 0; i < method.Body.Instructions.Count; i++)
+                foreach (var instruction in method.Body.Instructions)
                 {
-                    var instruction = method.Body.Instructions[i];
                     if (instruction.OpCode == OpCodes.Call && instruction.Operand is MethodReference calledMethod)
                     {
                         var resolvedMethod = calledMethod.Resolve();
@@ -89,8 +88,12 @@ public class StaticCleanerLogic
         try
         {
             var ilProcessor = methodBody.GetILProcessor();
+            var instructions = methodBody.Instructions;
 
-            var keyDataPair = ExtractByteArraysFromInstructions(methodBody.Instructions, callInstruction);
+            int callIndex = instructions.IndexOf(callInstruction);
+            if (callIndex < 2) return false;
+
+            var keyDataPair = ExtractByteArraysFromInstructions(instructions, callInstruction);
             if (keyDataPair == null) return false;
 
             byte[] key = keyDataPair.Item1;
@@ -99,7 +102,8 @@ public class StaticCleanerLogic
 
             string decryptedString = Decrypt(key, data);
 
-            ilProcessor.Replace(callInstruction, ilProcessor.Create(OpCodes.Ldstr, decryptedString));
+            var newInstruction = ilProcessor.Create(OpCodes.Ldstr, decryptedString);
+            ilProcessor.Replace(callInstruction, newInstruction);
 
             foreach (var instruction in instructionsToRemove)
             {
@@ -122,9 +126,7 @@ public class StaticCleanerLogic
         byte[] data = null;
         byte[] key = null;
 
-        int callIndex = instructions.IndexOf(callInstruction);
-
-        Instruction currentInstruction = instructions[callIndex - 1];
+        Instruction currentInstruction = callInstruction.Previous;
 
         var dataResult = FindAndExtractArrayPattern(currentInstruction, instructions);
         if (dataResult == null) return null;
@@ -390,15 +392,11 @@ public class StaticCleanerLogic
                 case MetadataType.Int16:
                 case MetadataType.UInt16:
                 case MetadataType.Int32:
-                case MetadataType.UInt32:
-                    instructions.Add(Instruction.Create(OpCodes.Ldc_I4_0)); break;
+                case MetadataType.UInt32: instructions.Add(Instruction.Create(OpCodes.Ldc_I4_0)); break;
                 case MetadataType.Int64:
-                case MetadataType.UInt64:
-                    instructions.Add(Instruction.Create(OpCodes.Ldc_I8, 0L)); break;
-                case MetadataType.Single:
-                    instructions.Add(Instruction.Create(OpCodes.Ldc_R4, 0.0f)); break;
-                case MetadataType.Double:
-                    instructions.Add(Instruction.Create(OpCodes.Ldc_R8, 0.0d)); break;
+                case MetadataType.UInt64: instructions.Add(Instruction.Create(OpCodes.Ldc_I8, 0L)); break;
+                case MetadataType.Single: instructions.Add(Instruction.Create(OpCodes.Ldc_R4, 0.0f)); break;
+                case MetadataType.Double: instructions.Add(Instruction.Create(OpCodes.Ldc_R8, 0.0d)); break;
                 default:
                     var tempLocal = new VariableDefinition(typeRef);
                     ilProcessor.Body.Variables.Add(tempLocal);
