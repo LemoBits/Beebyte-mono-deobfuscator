@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -30,7 +31,7 @@ jobs:
           copy .\BeeByteCleaner\bin\Release\BeeByteCleaner.exe artifacts\BeeByteCleaner.exe
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: BeeByteCleaner
           path: artifacts
