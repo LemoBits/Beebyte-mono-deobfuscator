@@ -24,6 +24,7 @@ public class Program
             PrintUsage();
             return;
         }
+
         string logFilePath = args[2];
         if (!File.Exists(logFilePath))
         {
@@ -42,7 +43,7 @@ public class Program
             Console.WriteLine(ex.StackTrace);
         }
     }
-    
+
     private static void PrintUsage()
     {
         Console.WriteLine("Usage:");
