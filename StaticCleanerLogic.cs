@@ -27,7 +27,8 @@ public class StaticCleanerLogic
         
         foreach(var type in typeDefinitions.Values)
         {
-            if (type.IsPublic || type.IsEnum || InheritsFrom(type, "UnityEngine.Object"))
+            bool isCompilerGenerated = IsCompilerGenerated(type);
+            if ((type.IsPublic && !isCompilerGenerated) || type.IsEnum || InheritsFrom(type, "UnityEngine.Object"))
             {
                 if(liveTypes.Add(type.FullName))
                     typeQueue.Enqueue(type.FullName);
@@ -117,7 +118,8 @@ public class StaticCleanerLogic
             foreach (var method in type.Methods)
             {
                 if (liveMethods.Contains(method.FullName)) continue;
-                if (method.IsConstructor || method.IsGetter || method.IsSetter || method.IsAddOn || method.IsRemoveOn) continue;
+
+                if (method.IsConstructor || method.IsSpecialName) continue;
                 
                 method.Name = $"Method_{count++}";
             }
@@ -215,5 +217,11 @@ public class StaticCleanerLogic
             catch { return false; }
         }
         return false;
+    }
+
+    private bool IsCompilerGenerated(TypeDefinition type)
+    {
+        if (type.Name.Contains("<") || type.Name.Contains(">")) return true;
+        return type.HasCustomAttributes && type.CustomAttributes.Any(a => a.AttributeType.FullName == "System.Runtime.CompilerServices.CompilerGeneratedAttribute");
     }
 }
